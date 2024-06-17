@@ -1,10 +1,12 @@
 import { GameObject } from "./GameObject";
 import { Global } from "./Global";
 import { Sprite } from "./Sprite";
+import { Enemy } from "./Enemy";
+import { checkCollision } from "./Utils";
 
 export class Player extends GameObject {
-  private frameWidth: number; // Width of a single frame
-  private frameHeight: number; // Height of a single frame
+  public frameWidth: number; // Width of a single frame
+  public frameHeight: number; // Height of a single frame
   private totalFrames: number; // Total number of frames in the animation
   private currentFrame: number; // Index of the current frame
   private frameSpeed: number; // Speed of frame change in milliseconds
@@ -15,7 +17,23 @@ export class Player extends GameObject {
   private sourceX: number;
   private sourceY: number;
   private playerScale: number;
-  constructor(x: number, y: number) {
+
+  private health: number;
+  private maxHealth: number;
+
+  private damage: number;
+  private isDamaged: boolean;
+  private damageCooldown: number;
+  private lastDamageTime: number;
+
+  private lastAttackTime: number | null; // For cooldown management
+  private attackCooldown: number; // Cooldown duration in milliseconds
+  private isAttacking: boolean; // To handle attack state
+  private whipLength: number; // Length of the whip
+  private enemies: Enemy[]; // Reference to the enemies
+  private attackRange: number; // Range within which the player can attack
+
+  constructor(x: number, y: number, playerIndex: number, enemies: Enemy[]) {
     super(x, y);
     this.frameWidth = 37;
     this.frameHeight = 37;
@@ -24,13 +42,43 @@ export class Player extends GameObject {
     this.frameSpeed = 200;
     this.direction = "right";
     this.lastAnimationFrameTime = null;
-    this.speed = 0.05;
+    this.speed = 0.04;
 
-    this.sourceY = 0; // Assuming all frames are in a single row
-    this.playerScale = 1.5; // Scale the player sprite
+    this.sourceY = playerIndex; // Assuming all frames are in a single row
+    this.playerScale = 1.7; // Scale the player sprite
+
+    this.maxHealth = 100;
+    this.health = this.maxHealth;
+    this.isDamaged = false;
+    this.damageCooldown = 1000; // 1 second cooldown between damage
+    this.lastDamageTime = 0;
+
+    this.lastAttackTime = null;
+    this.attackCooldown = 1000; // 1 second cooldown
+    this.isAttacking = false;
+    this.whipLength = 80; // Length of the whip
+    this.enemies = enemies; // Reference to the enemies
+    this.attackRange = 50; // Range within which the player can attack
+
+    this.damage = 10; // Damage amount
   }
 
-  playerUpdate(deltaTime: number, keys: any) {
+  takeDamage(amount: number, timestamp: number) {
+    if (timestamp - this.lastDamageTime > this.damageCooldown) {
+      this.health -= amount;
+      this.health = Math.max(this.health, 0); // Ensure health doesn't go below 0
+      this.isDamaged = true;
+      this.lastDamageTime = timestamp;
+    }
+  }
+
+  updateDamageStatus(timestamp: number) {
+    if (timestamp - this.lastDamageTime > this.damageCooldown) {
+      this.isDamaged = false;
+    }
+  }
+
+  playerUpdate(deltaTime: number, timestamp: number, keys: any) {
     let dx = 0;
     let dy = 0;
 
@@ -58,9 +106,54 @@ export class Player extends GameObject {
 
     this.X += dx;
     this.Y += dy;
+
+    // Handle attack
+    if (
+      keys.attack &&
+      !this.isAttacking &&
+      (!this.lastAttackTime ||
+        timestamp - this.lastAttackTime >= this.attackCooldown)
+    ) {
+      this.isAttacking = true;
+      this.lastAttackTime = timestamp;
+      this.performAttack();
+    }
+
+    if (
+      this.isAttacking &&
+      (!this.lastAttackTime ||
+        timestamp - this.lastAttackTime >= this.attackCooldown / 2)
+    ) {
+      this.isAttacking = false;
+    }
+  }
+
+  performAttack() {
+    const whipEndX =
+      this.direction === "right"
+        ? this.X + this.whipLength
+        : this.X - this.whipLength;
+    const whipEndY = this.Y;
+
+    this.enemies.forEach((enemy) => {
+      if (
+        checkCollision(
+          {
+            X: whipEndX,
+            Y: whipEndY,
+            frameHeight: this.frameHeight,
+            frameWidth: this.frameWidth,
+          },
+          enemy
+        )
+      ) {
+        enemy.takeDamage(this.damage);
+      }
+    });
   }
 
   playerAnimationUpdate(timestamp: number, isMoving: boolean) {
+    this.updateDamageStatus(timestamp);
     if (!this.lastAnimationFrameTime) {
       this.lastAnimationFrameTime = timestamp;
     }
@@ -79,6 +172,15 @@ export class Player extends GameObject {
 
   playerDraw(sprite: Sprite) {
     this.sourceX = this.currentFrame * this.frameWidth;
+    Global.CTX.save(); // Save the current state of the canvas
+
+    // Apply red tint filter if the player is damaged
+    if (this.isDamaged) {
+      Global.CTX.filter = "hue-rotate(-50deg) saturate(200%)";
+    } else {
+      Global.CTX.filter = "none";
+    }
+    Global.CTX.restore(); // Restore the Global.CANVAS state
     Global.CTX.save(); // Save the current state of the canvas
 
     if (this.direction === "left") {
@@ -110,6 +212,52 @@ export class Player extends GameObject {
       );
     }
 
+    if (this.isAttacking) {
+      Global.CTX.restore(); // Restore the Global.CANVAS state
+      Global.CTX.strokeStyle = "yellow";
+      Global.CTX.lineWidth = 2;
+      Global.CTX.beginPath();
+      Global.CTX.moveTo(this.X, this.Y);
+      Global.CTX.lineTo(
+        this.direction === "right"
+          ? this.X + this.whipLength
+          : this.X - this.whipLength,
+        this.Y
+      );
+      Global.CTX.stroke();
+    }
+
     Global.CTX.restore(); // Restore the Global.CANVAS state
+    // Draw the health bar
+    this.drawHealthBar();
+  }
+
+  drawCollisionBorder() {
+    Global.CTX.strokeStyle = "red";
+    Global.CTX.lineWidth = 2;
+    Global.CTX.strokeRect(
+      this.X - this.frameWidth / 2,
+      this.Y - this.frameHeight / 2,
+      this.frameWidth,
+      this.frameHeight
+    );
+  }
+
+  drawHealthBar() {
+    const barWidth = 50;
+    const barHeight = 5;
+    const x = this.X - barWidth / 2;
+    const y = this.Y + this.frameHeight + 10;
+
+    Global.CTX.fillStyle = "black";
+    Global.CTX.fillRect(x, y, barWidth + 2, barHeight + 2);
+
+    Global.CTX.fillStyle = "red";
+    Global.CTX.fillRect(
+      x,
+      y,
+      (this.health / this.maxHealth) * barWidth,
+      barHeight
+    );
   }
 }

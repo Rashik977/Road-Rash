@@ -1,3 +1,5 @@
+import { Global } from "./Global";
+
 export class KeyControls {
   public isMoving: boolean;
   public keys: any;
@@ -10,7 +12,7 @@ export class KeyControls {
       right: false,
       up: false,
       down: false,
-      pause: false,
+      attack: true,
     };
   }
 
@@ -29,8 +31,8 @@ export class KeyControls {
         this.keys.down = true;
         this.isMoving = true;
       } else if (event.key === "p" || event.key === "P") {
-        this.keys.pause = !this.keys.pause;
-        gameLoop(0);
+        Global.PAUSE = !Global.PAUSE;
+        gameLoop();
       }
     });
   }
