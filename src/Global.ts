@@ -12,4 +12,5 @@ export const Global: any = {
   CANVAS_HEIGHT: canvasHeight,
   CANVAS_BORDER_COLOR: canvasBorderColor,
   PAUSE: false,
+  GAMEOVER: false,
 };

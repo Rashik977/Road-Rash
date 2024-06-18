@@ -33,6 +33,8 @@ export class Player extends GameObject {
   private enemies: Enemy[]; // Reference to the enemies
   private attackRange: number; // Range within which the player can attack
 
+  private gameOverImage: HTMLImageElement;
+
   constructor(x: number, y: number, playerIndex: number, enemies: Enemy[]) {
     super(x, y);
     this.frameWidth = 37;
@@ -61,14 +63,17 @@ export class Player extends GameObject {
     this.attackRange = 50; // Range within which the player can attack
 
     this.damage = 10; // Damage amount
+
+    this.gameOverImage = new Image();
+    this.gameOverImage.src = "gameOver.png";
   }
 
   takeDamage(amount: number, timestamp: number) {
     if (timestamp - this.lastDamageTime > this.damageCooldown) {
       this.health -= amount;
-      this.health = Math.max(this.health, 0); // Ensure health doesn't go below 0
       this.isDamaged = true;
       this.lastDamageTime = timestamp;
+      this.health = Math.max(this.health, 0); // Ensure health doesn't go below 0
     }
   }
 
@@ -171,16 +176,27 @@ export class Player extends GameObject {
   }
 
   playerDraw(sprite: Sprite) {
+    if (this.health <= 0) {
+      console.log("Game Over");
+      Global.CTX.drawImage(
+        this.gameOverImage,
+        Global.CANVAS_WIDTH / 2 - this.gameOverImage.width / 2,
+        Global.CANVAS_HEIGHT / 2 - this.gameOverImage.height / 2
+      );
+      Global.GAMEOVER = true;
+      Global.PAUSE = true;
+      return;
+    }
     this.sourceX = this.currentFrame * this.frameWidth;
-    Global.CTX.save(); // Save the current state of the canvas
+    // Global.CTX.save(); // Save the current state of the canvas
 
     // Apply red tint filter if the player is damaged
-    if (this.isDamaged) {
-      Global.CTX.filter = "hue-rotate(-50deg) saturate(200%)";
-    } else {
-      Global.CTX.filter = "none";
-    }
-    Global.CTX.restore(); // Restore the Global.CANVAS state
+    // if (this.isDamaged) {
+    //   Global.CTX.filter = "hue-rotate(-50deg) saturate(200%)";
+    // } else {
+    //   Global.CTX.filter = "none";
+    // }
+    // Global.CTX.restore(); // Restore the Global.CANVAS state
     Global.CTX.save(); // Save the current state of the canvas
 
     if (this.direction === "left") {

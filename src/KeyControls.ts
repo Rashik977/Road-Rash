@@ -32,7 +32,9 @@ export class KeyControls {
         this.isMoving = true;
       } else if (event.key === "p" || event.key === "P") {
         Global.PAUSE = !Global.PAUSE;
-        gameLoop();
+        requestAnimationFrame(gameLoop);
+      } else if (Global.GAMEOVER && event.key === "Enter") {
+        location.reload();
       }
     });
   }

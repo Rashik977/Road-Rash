@@ -20,7 +20,6 @@ export class Enemy extends GameObject {
   private sourceY: number;
   private enemyScale: number;
 
-  private damageRange: number;
   private damage: number;
 
   private particles: Particle[] = [];
@@ -55,7 +54,6 @@ export class Enemy extends GameObject {
 
     this.player = player;
 
-    this.damageRange = 50; // Range within which the enemy can damage the player
     this.damage = 10; // Damage amount
 
     this.particles = [];
@@ -104,14 +102,13 @@ export class Enemy extends GameObject {
   }
 
   generateBloodParticles(x: number, y: number) {
-    for (let i = 0; i < 2; i++) {
+    for (let i = 0; i < 4; i++) {
       // Generate 20 particles
       this.particles.push(new Particle(x, y));
     }
   }
 
   takeDamage(amount: number) {
-    console.log(this.damageTexts);
     this.health -= amount;
     this.damageTexts.push({ x: this.X, y: this.Y, damage: amount, alpha: 1 });
     if (this.health <= 0) {

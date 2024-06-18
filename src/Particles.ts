@@ -16,17 +16,17 @@ export class Particle extends GameObject {
 
     // Randomize the direction using an angle and speed
     const angle = Math.random() * -Math.PI; // Random angle in radians
-    const speed = Math.random() * 2; // Random speed
+    const speed = Math.random(); // Random speed
     this.velocityX = speed * Math.cos(angle);
     this.velocityY = speed * Math.sin(angle);
 
-    this.lifetime = 1000; // Lifetime in milliseconds
+    this.lifetime = 200; // Lifetime in milliseconds
     this.age = 0;
   }
 
   update(deltaTime: number) {
-    this.X += this.velocityX;
-    this.Y += this.velocityY;
+    this.X += this.velocityX * deltaTime;
+    this.Y += this.velocityY * deltaTime;
     this.age += deltaTime;
   }
 

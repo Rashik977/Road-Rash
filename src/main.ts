@@ -26,19 +26,16 @@ const controlls = new KeyControls();
 enemies.push(new Enemy(200, 200, 220, player, enemies));
 enemies.push(new Enemy(300, 300, 220, player, enemies));
 
-let lastFrameTime: number | null = null;
+let lastFrameTime: number = 0;
 
 controlls.keydown(gameLoop);
 controlls.keyup();
 
 function gameLoop(timestamp: number) {
   if (Global.PAUSE) {
-    return;
-  }
-
-  // Initialize lastFrameTime if it's not set
-  if (!lastFrameTime) {
     lastFrameTime = timestamp;
+    requestAnimationFrame(gameLoop);
+    return;
   }
 
   // Calculate the time elapsed since the last frame
@@ -48,6 +45,7 @@ function gameLoop(timestamp: number) {
   //updating player and enemy animations and positions
   player.playerAnimationUpdate(timestamp, controlls.isMoving);
   player.playerUpdate(deltaTime, timestamp, controlls.keys);
+
   for (const enemy of enemies) {
     enemy.enemyAnimationUpdate(timestamp);
     enemy.enemyUpdate(deltaTime, timestamp);
